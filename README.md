@@ -105,15 +105,9 @@ El proyecto utiliza las siguientes configuraciones principales:
 }
 ```
 
-## 👤 Autor
+## Autor
 
 **manuvaldes15**
 - GitHub: [@manuvaldes15](https://github.com/manuvaldes15)
-
-## 📞 Soporte
-
-Si tienes preguntas o encuentras problemas, por favor abre un issue en el repositorio de GitHub.
-
----
 
 **Última actualización:** Octubre 2026
