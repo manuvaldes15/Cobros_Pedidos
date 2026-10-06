@@ -1,12 +1,12 @@
-# Cobros_Pedidos 📦💰
+# Cobros Pedidos 🍔
 
 Sistema de gestión de cobros y pedidos desarrollado con tecnologías modernas de frontend.
 
-## 🎯 Descripción
+## **Descripción**
 
 **Cobros_Pedidos** es una aplicación web diseñada para gestionar y administrar cobros de pedidos de manera eficiente. Proporciona una interfaz intuitiva para el seguimiento, procesamiento y control de transacciones comerciales.
 
-## 🛠️ Stack Tecnológico
+## Stack Tecnológico
 
 ### Lenguajes
 - **TypeScript** (97.1%) - Lenguaje principal del proyecto
@@ -27,12 +27,12 @@ Sistema de gestión de cobros y pedidos desarrollado con tecnologías modernas d
 - **JPEG.js & PNG.js** - Procesamiento de imágenes
 - **Vite Plugin React** - Plugin oficial de React para Vite
 
-## 📋 Requisitos Previos
+## Requisitos Previos
 
 - **Node.js** >= 18.x
 - **npm** o **yarn** (gestor de paquetes)
 
-## 🚀 Instalación
+## Instalación
 
 1. Clonar el repositorio:
 ```bash
@@ -45,7 +45,7 @@ cd Cobros_Pedidos
 npm install
 ```
 
-## 💻 Comandos Disponibles
+## Comandos Disponibles
 
 ```bash
 # Iniciar servidor de desarrollo (disponible en http://localhost:5173)
@@ -61,7 +61,7 @@ npm run preview
 npm run format
 ```
 
-## 📁 Estructura del Proyecto
+## Estructura del Proyecto
 
 ```
 Cobros_Pedidos/
@@ -74,7 +74,7 @@ Cobros_Pedidos/
 └── README.md              # Este archivo
 ```
 
-## 🎨 Características Principales
+## Características Principales
 
 - ✅ Interfaz moderna y responsiva
 - ✅ Sistema de gestión de cobros
@@ -83,7 +83,7 @@ Cobros_Pedidos/
 - ✅ Estilos con Tailwind CSS para un diseño limpio y consistente
 - ✅ Código tipado con TypeScript
 
-## 🔧 Configuración
+## Configuración
 
 El proyecto utiliza las siguientes configuraciones principales:
 
@@ -92,7 +92,7 @@ El proyecto utiliza las siguientes configuraciones principales:
 - **Tailwind CSS** para estilos utilitarios
 - **ESM** (módulos ES nativos)
 
-## 📦 Dependencias Principales
+## Dependencias Principales
 
 ```json
 {
@@ -104,20 +104,6 @@ El proyecto utiliza las siguientes configuraciones principales:
   "typescript": "^5.7.0"
 }
 ```
-
-## 🤝 Contribuciones
-
-Las contribuciones son bienvenidas. Si deseas contribuir:
-
-1. Fork el repositorio
-2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
-
-## 📄 Licencia
-
-Este proyecto no tiene una licencia especificada. Consulta con el propietario del repositorio para más información.
 
 ## 👤 Autor
 
