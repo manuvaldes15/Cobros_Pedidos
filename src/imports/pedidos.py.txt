@@ -1,0 +1,383 @@
+import tkinter as tk
+from tkinter import ttk, messagebox
+from collections import defaultdict
+
+class FoodOrderSplitter:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("🍕 Divisor de Pagos - Comida")
+        self.root.geometry("1080x700")
+        self.root.minsize(920, 580)
+        self.root.configure(bg="#F0F4F8")
+
+        self.bg_main = "#F0F4F8"
+        self.bg_card = "#FFFFFF"
+        self.primary = "#4F46E5"
+        self.danger = "#EF4444"
+        self.success = "#10B981"
+        self.secondary = "#22D3EE"   # ← Agregado
+
+        self.people = []
+        self.items = []
+        self.shared_costs = []
+
+        self.new_person_var = tk.StringVar()
+        self.item_name_var = tk.StringVar()
+        self.quantity_var = tk.IntVar(value=1)
+        self.price_var = tk.DoubleVar(value=0.0)
+        self.delivery_var = tk.DoubleVar(value=0.0)
+        self.shared_desc_var = tk.StringVar()
+        self.shared_amount_var = tk.DoubleVar(value=0.0)
+        self.has_birthday_var = tk.BooleanVar()
+        self.has_delivery_var = tk.BooleanVar()
+
+        self.setup_ui()
+
+    def setup_ui(self):
+        self.main_canvas = tk.Canvas(self.root, bg=self.bg_main, highlightthickness=0)
+        self.main_scrollbar = ttk.Scrollbar(self.root, orient="vertical", command=self.main_canvas.yview)
+        self.scrollable_main = tk.Frame(self.main_canvas, bg=self.bg_main)
+
+        self.scrollable_main.bind("<Configure>", lambda e: self.main_canvas.configure(scrollregion=self.main_canvas.bbox("all")))
+        self.main_canvas.bind("<Configure>", lambda e: self.main_canvas.itemconfig("main", width=e.width-20))
+
+        self.main_canvas.create_window((0, 0), window=self.scrollable_main, anchor="nw", tags="main")
+        self.main_canvas.configure(yscrollcommand=self.main_scrollbar.set)
+
+        self.main_canvas.pack(side="left", fill="both", expand=True)
+        self.main_scrollbar.pack(side="right", fill="y")
+
+        content = tk.Frame(self.scrollable_main, bg=self.bg_main, padx=10, pady=10)
+        content.pack(fill=tk.BOTH, expand=True)
+
+        paned = tk.PanedWindow(content, orient=tk.HORIZONTAL, bg=self.bg_main, sashwidth=6)
+        paned.pack(fill=tk.BOTH, expand=True)
+
+        left = tk.Frame(paned, bg=self.bg_main, width=370, relief=tk.GROOVE, bd=1)
+        paned.add(left, stretch="never")
+
+        tk.Label(left, text="⚙️ Configuración", font=("Helvetica", 15, "bold"), bg=self.bg_main, fg=self.primary).pack(pady=8)
+
+        self.create_section(left, "👥 Personas")
+        addf = tk.Frame(left, bg=self.bg_main)
+        addf.pack(fill=tk.X, padx=8, pady=4)
+        tk.Entry(addf, textvariable=self.new_person_var, font=("Helvetica", 10)).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0,4))
+        tk.Button(addf, text="➕", command=self.add_person, bg=self.primary, fg="white", width=3).pack(side=tk.RIGHT)
+
+        self.people_listbox = tk.Listbox(left, font=("Helvetica", 10), height=5, bg=self.bg_card)
+        self.people_listbox.pack(fill=tk.BOTH, expand=True, padx=8, pady=4)
+
+        bf = tk.Frame(left, bg=self.bg_main)
+        bf.pack(fill=tk.X, padx=8)
+        tk.Button(bf, text="Eliminar", command=self.remove_person, bg=self.danger, fg="white").pack(side=tk.LEFT, padx=4)
+        tk.Button(bf, text="Limpiar", command=self.clear_people, bg="#6B7280", fg="white").pack(side=tk.RIGHT, padx=4)
+
+        self.create_section(left, "🎂 Cumpleañero")
+        tk.Checkbutton(left, text="Hay cumpleañero", variable=self.has_birthday_var, bg=self.bg_main, command=self.update_birthday_options).pack(anchor="w", padx=8)
+        self.birthday_combo = ttk.Combobox(left, state="disabled", font=("Helvetica", 10))
+        self.birthday_combo.pack(fill=tk.X, padx=8, pady=4)
+
+        self.create_section(left, "🚚 Envío")
+        tk.Checkbutton(left, text="Hay costo de envío", variable=self.has_delivery_var, bg=self.bg_main, command=self.update_delivery_options).pack(anchor="w", padx=8)
+        tk.Label(left, text="Costo envío ($):", bg=self.bg_main, font=("Helvetica", 10)).pack(anchor="w", padx=8)
+        self.delivery_entry = tk.Entry(left, textvariable=self.delivery_var, state="disabled", font=("Helvetica", 10))
+        self.delivery_entry.pack(fill=tk.X, padx=8, pady=4)
+
+        self.create_section(left, "📌 Costos Compartidos")
+        tk.Label(left, text="Descripción (usa número negativo para créditos):", bg=self.bg_main, font=("Helvetica", 10)).pack(anchor="w", padx=8)
+        tk.Entry(left, textvariable=self.shared_desc_var, font=("Helvetica", 10)).pack(fill=tk.X, padx=8, pady=(0,4))
+        tk.Label(left, text="Monto ($):", bg=self.bg_main, font=("Helvetica", 10)).pack(anchor="w", padx=8)
+        tk.Entry(left, textvariable=self.shared_amount_var, font=("Helvetica", 10)).pack(fill=tk.X, padx=8, pady=(0,4))
+        tk.Button(left, text="➕ Agregar Costo Compartido", command=self.add_shared_cost,
+                 bg="#8B5CF6", fg="white", font=("Helvetica", 10, "bold")).pack(fill=tk.X, padx=8, pady=8)
+
+        self.create_section(left, "🍽️ Agregar Plato")
+        for label, var, is_spin in [
+            ("Nombre del plato:", self.item_name_var, False),
+            ("Cantidad:", self.quantity_var, True),
+            ("Precio unitario:", self.price_var, False)
+        ]:
+            tk.Label(left, text=label, bg=self.bg_main, font=("Helvetica", 10)).pack(anchor="w", padx=8)
+            if is_spin:
+                tk.Spinbox(left, from_=1, to=99, textvariable=var, font=("Helvetica", 10)).pack(fill=tk.X, padx=8, pady=(0,6))
+            else:
+                tk.Entry(left, textvariable=var, font=("Helvetica", 10)).pack(fill=tk.X, padx=8, pady=(0,6))
+
+        tk.Label(left, text="¿Quién lo pidió?", bg=self.bg_main, font=("Helvetica", 10)).pack(anchor="w", padx=8)
+        self.person_combo = ttk.Combobox(left, state="readonly", font=("Helvetica", 10))
+        self.person_combo.pack(fill=tk.X, padx=8, pady=(0,8))
+
+        tk.Button(left, text="➕ Agregar Plato", command=self.add_item, bg=self.primary, fg="white", font=("Helvetica", 11, "bold")).pack(fill=tk.X, padx=8, pady=8)
+
+        # Panel Derecho
+        right = tk.Frame(paned, bg=self.bg_main)
+        paned.add(right, stretch="always")
+
+        tk.Label(right, text="📊 Resumen del Pedido", font=("Helvetica", 15, "bold"), bg=self.bg_main, fg=self.primary).pack(pady=8)
+
+        r_canvas = tk.Canvas(right, bg=self.bg_main, highlightthickness=0)
+        r_scroll = ttk.Scrollbar(right, orient="vertical", command=r_canvas.yview)
+        self.right_frame = tk.Frame(r_canvas, bg=self.bg_main)
+
+        self.right_frame.bind("<Configure>", lambda e: r_canvas.configure(scrollregion=r_canvas.bbox("all")))
+        r_canvas.bind("<Configure>", lambda e: r_canvas.itemconfig("rwin", width=e.width-15))
+
+        r_canvas.create_window((0, 0), window=self.right_frame, anchor="nw", tags="rwin")
+        r_canvas.configure(yscrollcommand=r_scroll.set)
+
+        r_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        r_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+
+        self.items_frame = self.right_frame
+
+        tf = tk.Frame(right, bg=self.bg_card, relief=tk.RAISED, bd=2)
+        tf.pack(fill=tk.X, pady=10, padx=10)
+        self.label_subtotal = tk.Label(tf, text="Subtotal Platos: $0.00", font=("Helvetica", 11), bg=self.bg_card)
+        self.label_subtotal.pack(anchor="w", padx=12, pady=2)
+        self.label_shared = tk.Label(tf, text="Costos Compartidos: $0.00", font=("Helvetica", 11), bg=self.bg_card)
+        self.label_shared.pack(anchor="w", padx=12, pady=2)
+        self.label_total = tk.Label(tf, text="TOTAL: $0.00", font=("Helvetica", 15, "bold"), bg=self.bg_card, fg=self.primary)
+        self.label_total.pack(anchor="w", padx=12, pady=6)
+
+        btnf = tk.Frame(right, bg=self.bg_main)
+        btnf.pack(fill=tk.X, padx=10, pady=8)
+        tk.Button(btnf, text="🧮 Calcular División", command=self.calculate_division, bg=self.primary, fg="white", font=("Helvetica", 12, "bold")).pack(fill=tk.X, pady=4)
+        tk.Button(btnf, text="🔄 Limpiar Todo", command=self.reset_all, bg="#6B7280", fg="white").pack(fill=tk.X)
+
+        self.update_people_list()
+
+    def create_section(self, parent, title):
+        tk.Label(parent, text=title, font=("Helvetica", 11, "bold"), bg=self.bg_main, fg=self.primary).pack(anchor="w", padx=8, pady=(10, 4))
+
+    def add_person(self):
+        name = self.new_person_var.get().strip()
+        if name and name not in self.people:
+            self.people.append(name)
+            self.update_people_list()
+            self.new_person_var.set("")
+
+    def remove_person(self):
+        try:
+            idx = self.people_listbox.curselection()[0]
+            del self.people[idx]
+            self.update_people_list()
+        except:
+            messagebox.showwarning("Atención", "Selecciona una persona")
+
+    def clear_people(self):
+        if messagebox.askyesno("Confirmar", "¿Borrar todas las personas?"):
+            self.people.clear()
+            self.update_people_list()
+
+    def update_people_list(self):
+        self.people_listbox.delete(0, tk.END)
+        for p in self.people:
+            self.people_listbox.insert(tk.END, p)
+        self.person_combo['values'] = self.people
+        self.birthday_combo['values'] = self.people
+        if self.people:
+            self.person_combo.current(0)
+
+    def update_birthday_options(self):
+        self.birthday_combo.config(state="readonly" if self.has_birthday_var.get() else "disabled")
+
+    def update_delivery_options(self):
+        self.delivery_entry.config(state="normal" if self.has_delivery_var.get() else "disabled")
+
+    def add_shared_cost(self):
+        desc = self.shared_desc_var.get().strip()
+        try:
+            amount = float(self.shared_amount_var.get())
+            if desc:
+                self.shared_costs.append({"desc": desc, "amount": amount})
+                self.shared_desc_var.set("")
+                self.shared_amount_var.set(0.0)
+                self.update_display()
+            else:
+                messagebox.showwarning("Error", "Ingresa una descripción")
+        except:
+            messagebox.showwarning("Error", "Monto inválido")
+
+    def add_item(self):
+        try:
+            if not self.people:
+                messagebox.showwarning("Error", "Agrega personas primero")
+                return
+            name = self.item_name_var.get().strip()
+            if not name:
+                messagebox.showwarning("Error", "Ingresa nombre del plato")
+                return
+            person = self.person_combo.get()
+            if not person:
+                messagebox.showwarning("Error", "Selecciona quién pidió")
+                return
+
+            price = float(self.price_var.get())
+            if price <= 0:
+                messagebox.showwarning("Error", "Precio inválido")
+                return
+
+            item = {
+                'name': name,
+                'quantity': int(self.quantity_var.get()),
+                'price': price,
+                'person': person,
+                'total': int(self.quantity_var.get()) * price
+            }
+            self.items.append(item)
+            self.update_display()
+
+            self.item_name_var.set("")
+            self.quantity_var.set(1)
+            self.price_var.set(0.0)
+        except:
+            messagebox.showerror("Error", "Datos inválidos")
+
+    def update_display(self):
+        for w in self.items_frame.winfo_children():
+            w.destroy()
+
+        if self.items:
+            by_person = defaultdict(list)
+            for item in self.items:
+                by_person[item['person']].append(item)
+            for person in self.people:
+                if person in by_person:
+                    self.create_person_card(person, by_person[person])
+
+        if self.shared_costs:
+            sf = tk.Frame(self.items_frame, bg="#FEF3C7", relief=tk.RAISED, bd=1, padx=10, pady=8)
+            sf.pack(fill=tk.X, pady=8, padx=5)
+            tk.Label(sf, text="📌 Costos Compartidos", font=("Helvetica", 11, "bold"), bg="#FEF3C7", fg="#D97706").pack(anchor="w")
+            for c in self.shared_costs:
+                sign = "🔴" if c['amount'] < 0 else "•"
+                tk.Label(sf, text=f"{sign} {c['desc']}: ${c['amount']:.2f}", bg="#FEF3C7").pack(anchor="w")
+
+        if not self.items and not self.shared_costs:
+            tk.Label(self.items_frame, text="Aún no hay nada", bg=self.bg_main, fg="#888").pack(pady=40)
+
+        self.update_totals()
+
+    def create_person_card(self, person, items):
+        card = tk.Frame(self.items_frame, bg=self.bg_card, relief=tk.RAISED, bd=1, padx=10, pady=8)
+        card.pack(fill=tk.X, pady=6, padx=5)
+        tk.Label(card, text=f"👤 {person}", font=("Helvetica", 11, "bold"), bg=self.bg_card, fg=self.primary).pack(anchor="w")
+        subtotal = 0
+        for item in items:
+            row = tk.Frame(card, bg=self.bg_card)
+            row.pack(fill=tk.X, pady=2)
+            tk.Label(row, text=f"{item['quantity']}× {item['name']} @ ${item['price']:.2f}", bg=self.bg_card, anchor="w").pack(side=tk.LEFT, fill=tk.X, expand=True)
+            tk.Label(row, text=f"${item['total']:.2f}", bg=self.bg_card, font=("Helvetica", 10, "bold")).pack(side=tk.RIGHT, padx=5)
+            tk.Button(row, text="✕", bg=self.danger, fg="white", width=3, font=("Helvetica", 8),
+                     command=lambda i=self.items.index(item): self.delete_item(i)).pack(side=tk.RIGHT)
+            subtotal += item['total']
+        tk.Label(card, text=f"Subtotal: ${subtotal:.2f}", font=("Helvetica", 10, "bold"), bg=self.bg_card, fg=self.secondary).pack(anchor="e")
+
+    def delete_item(self, idx):
+        if 0 <= idx < len(self.items):
+            self.items.pop(idx)
+            self.update_display()
+
+    def update_totals(self):
+        subtotal_platos = sum(i['total'] for i in self.items)
+        total_shared = sum(c['amount'] for c in self.shared_costs)
+        total = subtotal_platos + total_shared
+        self.label_subtotal.config(text=f"Subtotal Platos: ${subtotal_platos:.2f}")
+        self.label_shared.config(text=f"Costos Compartidos: ${total_shared:.2f}")
+        self.label_total.config(text=f"TOTAL: ${total:.2f}")
+
+    def calculate_division(self):
+        if not self.items and not self.shared_costs:
+            messagebox.showwarning("Atención", "Agrega algo primero")
+            return
+
+        delivery = self.delivery_var.get() if self.has_delivery_var.get() else 0.0
+        birthday_person = self.birthday_combo.get() if self.has_birthday_var.get() else None
+
+        person_amounts = defaultdict(float)
+        for item in self.items:
+            person_amounts[item['person']] += item['total']
+
+        total_shared = sum(c['amount'] for c in self.shared_costs) + delivery
+        num_people = len(self.people)
+
+        if num_people == 0:
+            messagebox.showwarning("Error", "No hay personas")
+            return
+
+        share_shared = total_shared / num_people if total_shared != 0 else 0
+
+        for p in self.people:
+            if p not in person_amounts:
+                person_amounts[p] = 0
+            person_amounts[p] += share_shared
+
+        # Cumpleañero
+        if birthday_person and birthday_person in person_amounts:
+            birthday_amount = person_amounts.pop(birthday_person)
+            remaining = len(person_amounts)
+            if remaining > 0:
+                share = birthday_amount / remaining
+                for p in person_amounts:
+                    person_amounts[p] += share
+
+        self.show_results(person_amounts)
+
+    def show_results(self, amounts):
+        win = tk.Toplevel(self.root)
+        win.title("💳 Resultado - División de Pagos")
+        win.geometry("540x720")
+        win.configure(bg=self.bg_main)
+
+        tk.Label(win, text="🧮 División Final", font=("Helvetica", 16, "bold"), bg=self.bg_main, fg=self.primary).pack(pady=12)
+
+        total = sum(amounts.values())
+        tk.Label(win, text=f"Total General: ${total:.2f}", font=("Helvetica", 14, "bold"), bg=self.bg_main).pack(pady=5)
+
+        scroll = tk.Canvas(win, bg=self.bg_main, highlightthickness=0)
+        sbar = ttk.Scrollbar(win, orient="vertical", command=scroll.yview)
+        frame = tk.Frame(scroll, bg=self.bg_main)
+        frame.bind("<Configure>", lambda e: scroll.configure(scrollregion=scroll.bbox("all")))
+        scroll.create_window((0, 0), window=frame, anchor="nw")
+        scroll.configure(yscrollcommand=sbar.set)
+
+        scroll.pack(side="left", fill="both", expand=True, padx=20, pady=10)
+        sbar.pack(side="right", fill="y")
+
+        for person, amount in sorted(amounts.items(), key=lambda x: x[1], reverse=True):
+            card = tk.Frame(frame, bg=self.bg_card, relief=tk.RAISED, bd=2, padx=15, pady=12)
+            card.pack(fill=tk.X, pady=8)
+            tk.Label(card, text=f"👤 {person}", font=("Helvetica", 12, "bold"), bg=self.bg_card, fg=self.primary).pack(anchor="w")
+            tk.Label(card, text=f"${amount:.2f}", font=("Helvetica", 16, "bold"), bg=self.bg_card, fg=self.success).pack(anchor="w")
+
+        def copy():
+            text = "División de Pagos:\n\n"
+            for p, a in sorted(amounts.items(), key=lambda x: x[1], reverse=True):
+                text += f"{p}: ${a:.2f}\n"
+            self.root.clipboard_clear()
+            self.root.clipboard_append(text)
+            messagebox.showinfo("Copiado", "Resultado copiado al portapapeles")
+
+        tk.Button(win, text="📋 Copiar Resultados", command=copy, bg=self.primary, fg="white", font=("Helvetica", 11, "bold")).pack(pady=15)
+
+    def reset_all(self):
+        if messagebox.askyesno("Confirmar", "¿Limpiar todo?"):
+            self.items.clear()
+            self.shared_costs.clear()
+            self.people.clear()
+            self.new_person_var.set("")
+            self.item_name_var.set("")
+            self.quantity_var.set(1)
+            self.price_var.set(0)
+            self.delivery_var.set(0)
+            self.shared_desc_var.set("")
+            self.shared_amount_var.set(0)
+            self.has_birthday_var.set(False)
+            self.has_delivery_var.set(False)
+            self.update_people_list()
+            self.update_display()
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = FoodOrderSplitter(root)
+    root.mainloop()
